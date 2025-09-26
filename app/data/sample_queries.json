@@ -1,0 +1,31 @@
+{
+  "economic_census": {
+    "name": "経済センサス-活動調査（事業所数）",
+    "statsDataId": "0000000000000000000000000000",
+    "description": "産業別・都道府県別の事業所数。サンプルIDのため必要に応じて更新してください。",
+    "default_params": {
+      "cdCat01": "06",
+      "cdArea": "40",
+      "time": "2012-2021"
+    }
+  },
+  "monthly_retail": {
+    "name": "商業動態統計（月次小売販売額）",
+    "statsDataId": "1111111111111111111111111111",
+    "description": "関連する月次販売額指数。Nowcast補正で利用。サンプルIDです。",
+    "default_params": {
+      "cdCat01": "06",
+      "cdArea": "00000",
+      "time": "202001-202312"
+    }
+  },
+  "household_survey": {
+    "name": "家計調査（品目別支出）",
+    "statsDataId": "2222222222222222222222222222",
+    "description": "関連消費支出の参照用指標。サンプルIDです。",
+    "default_params": {
+      "cdCat01": "06",
+      "time": "2012-2023"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+streamlit
+requests
+pandas
+numpy
+plotly
+kaleido
+tenacity
+pydantic
+python-pptx
+openpyxl
+reportlab
