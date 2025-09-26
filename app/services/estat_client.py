@@ -130,12 +130,14 @@ class EstatClient:
         api_params = self._make_params(stats_data_id, params)
         response = requests.get(self.BASE_URL, params=api_params, timeout=self.timeout)
         response.raise_for_status()
-        payload = response.json().get("STATISTICAL_DATA", {})
+        response_json = response.json()
+        root_payload = response_json.get("GET_STATS_DATA", response_json)
+        payload = root_payload.get("STATISTICAL_DATA", {})
         if raw:
             return payload
-        status = payload.get("RESULT", {}).get("STATUS")
+        status = root_payload.get("RESULT", {}).get("STATUS")
         if status != 0:
-            message = payload.get("RESULT", {}).get("ERROR_MSG", "e-Stat API returned an error")
+            message = root_payload.get("RESULT", {}).get("ERROR_MSG", "e-Stat API returned an error")
             raise RuntimeError(message)
         return payload
 
