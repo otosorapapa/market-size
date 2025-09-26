@@ -84,6 +84,10 @@ def sidebar_controls(
         default_api_key = st.session_state["estat_api_key"]
     elif "ESTAT_APP_ID" in st.secrets:
         default_api_key = st.secrets["ESTAT_APP_ID"]
+    else:
+        from os import getenv
+
+        default_api_key = getenv("ESTAT_APP_ID", "")
 
     api_key = st.sidebar.text_input(
         "e-Stat APIキー",

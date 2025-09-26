@@ -13,7 +13,7 @@ Streamlit ベースで業種・地域を入力すると、e-Stat API から統�
    pip install -r requirements.txt
    ```
 
-2. `.streamlit/secrets.toml` に API キーを設定します。
+2. `.streamlit/secrets.toml` に API キーを設定します。環境変数 `ESTAT_APP_ID` に設定しても読み込まれます。
 
    ```toml
    ESTAT_APP_ID = "あなたのe-StatアプリID"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -27,6 +28,8 @@ def _load_estat_client(api_key: str | None) -> EstatClient:
     app_id = (api_key or "").strip()
     if not app_id and "ESTAT_APP_ID" in st.secrets:
         app_id = st.secrets["ESTAT_APP_ID"].strip()
+    if not app_id:
+        app_id = os.getenv("ESTAT_APP_ID", "").strip()
     if not app_id:
         raise RuntimeError("e-StatのAPIキーが未設定です。サイドバーから入力してください。")
     return EstatClient(app_id)
