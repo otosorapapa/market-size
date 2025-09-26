@@ -42,6 +42,7 @@ class EstatClient:
     """Simple e-Stat API client with caching and retry support."""
 
     BASE_URL = "https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData"
+    LIST_URL = "https://api.e-stat.go.jp/rest/3.0/app/json/getStatsList"
 
     def __init__(self, app_id: str, *, timeout: int = 30) -> None:
         self.app_id = app_id
@@ -106,6 +107,74 @@ class EstatClient:
         api_params = {"appId": self.app_id, "statsDataId": stats_data_id}
         api_params.update(params)
         return api_params
+
+    def resolve_stats_data_id(
+        self,
+        stats_data_id: Optional[str],
+        *,
+        list_params: Optional[Dict[str, Any]] = None,
+        table_name_keyword: Optional[str] = None,
+        refresh: bool = False,
+    ) -> str:
+        """Return a valid ``statsDataId`` by optionally querying getStatsList.
+
+        Parameters
+        ----------
+        stats_data_id:
+            Pre-configured ``statsDataId``. When provided and ``refresh`` is
+            ``False`` the value is returned as-is.
+        list_params:
+            Parameters passed to the e-Stat ``getStatsList`` endpoint when a
+            lookup is required. The caller is responsible for providing the
+            ``appId``.
+        table_name_keyword:
+            Optional keyword used to prioritise a specific table when multiple
+            results are returned from ``getStatsList``.
+        refresh:
+            When ``True`` the method ignores the provided ``stats_data_id`` and
+            forces a lookup.
+        """
+
+        if stats_data_id and not refresh:
+            return stats_data_id
+
+        if not list_params:
+            if stats_data_id:
+                return stats_data_id
+            raise ValueError(
+                "statsListParams が指定されていないため、statsDataId を解決できません。"
+            )
+
+        api_params = {"appId": self.app_id}
+        api_params.update(list_params)
+
+        response = requests.get(self.LIST_URL, params=api_params, timeout=self.timeout)
+        response.raise_for_status()
+        response_json = response.json()
+        root_payload = response_json.get("GET_STATS_LIST", response_json)
+        result = root_payload.get("RESULT", {})
+        if result.get("STATUS") != 0:
+            message = result.get("ERROR_MSG", "e-Stat API getStatsList returned an error")
+            raise RuntimeError(message)
+
+        data_list = root_payload.get("DATALIST_INF", {}).get("TABLE_INF", [])
+        if isinstance(data_list, dict):
+            data_list = [data_list]
+        if not data_list:
+            raise LookupError("getStatsList で統計表が見つかりませんでした。")
+
+        if table_name_keyword:
+            for table in data_list:
+                table_name = table.get("TABLE_NAME") or table.get("TITLE") or ""
+                if table_name_keyword in table_name:
+                    resolved_id = str(table.get("@id", ""))
+                    if resolved_id:
+                        return resolved_id
+
+        resolved_id = str(data_list[0].get("@id", ""))
+        if not resolved_id:
+            raise LookupError("getStatsList から有効な statsDataId を取得できませんでした。")
+        return resolved_id
 
     def list_class_objs(self, stats_data_id: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, str]]:
         """Return metadata mapping for classification codes."""
