@@ -26,6 +26,10 @@ def load_presets() -> Dict[str, Dict[str, str]]:
 
 def _load_estat_client(api_key: str | None) -> EstatClient:
     app_id = (api_key or "").strip()
+    if not app_id and st is not None and "estat_api_key" in st.session_state:
+        stored_key = str(st.session_state.get("estat_api_key", "")).strip()
+        if stored_key:
+            app_id = stored_key
     if not app_id and "ESTAT_APP_ID" in st.secrets:
         app_id = st.secrets["ESTAT_APP_ID"].strip()
     if not app_id:
