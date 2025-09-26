@@ -37,6 +37,8 @@ Streamlit ベースで業種・地域を入力すると、e-Stat API から統�
 ## 拡張ポイント
 
 - `data/sample_queries.json` に統計表 ID やパラメータを追加して用途に応じて拡張できます。
+  `statsDataId` が不明な場合は `statsListParams` と `tableNameKeyword` を指定すると
+  アプリ起動時に自動で解決されます。
 - `services/jsic_mapper.py` の辞書を更新すると、業種の補完精度を高められます。
 - `services/nowcast.py` では月次成長率を渡すことで Nowcast の計算を高度化できます。
 - `services/llm_writer.py` のプロンプトを調整し、生成する文章の粒度やトーンをカスタマイズできます。

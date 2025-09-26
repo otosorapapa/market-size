@@ -166,11 +166,37 @@ def main() -> None:
         st.info("シークレット未設定のためサンプルデータを使用しています。")
     else:
         try:
+            resolved_stats_id = client.resolve_stats_data_id(
+                preset_meta.get("statsDataId"),
+                list_params=preset_meta.get("statsListParams"),
+                table_name_keyword=preset_meta.get("tableNameKeyword"),
+            )
+            preset_meta["statsDataId"] = resolved_stats_id
             with st.status("e-Statから統計を取得中", expanded=True):
-                data = client.get(preset_meta["statsDataId"], params)
+                data = client.get(resolved_stats_id, params)
         except Exception as exc:  # pragma: no cover - defensive against API issues
-            st.warning(f"統計取得でエラーが発生しました: {exc}. サンプルデータを表示します。")
-            data = _create_placeholder(period)
+            if preset_meta.get("statsListParams"):
+                try:
+                    resolved_stats_id = client.resolve_stats_data_id(
+                        preset_meta.get("statsDataId"),
+                        list_params=preset_meta.get("statsListParams"),
+                        table_name_keyword=preset_meta.get("tableNameKeyword"),
+                        refresh=True,
+                    )
+                    preset_meta["statsDataId"] = resolved_stats_id
+                    with st.status("e-Statから統計を取得中", expanded=True):
+                        data = client.get(resolved_stats_id, params)
+                except Exception as retry_exc:
+                    st.warning(
+                        "統計取得でエラーが発生しました: "
+                        f"{retry_exc}. サンプルデータを表示します。"
+                    )
+                    data = _create_placeholder(period)
+            else:
+                st.warning(
+                    f"統計取得でエラーが発生しました: {exc}. サンプルデータを表示します。"
+                )
+                data = _create_placeholder(period)
 
     if data.empty:
         data = _create_placeholder(period)
