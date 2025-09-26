@@ -240,7 +240,17 @@ def main() -> None:
 
     with tab_export:
         st.write("取得したデータとレポートを各形式でダウンロードできます。")
-        figures_png = charts.figures_to_png([time_fig, scatter_fig])
+        try:
+            figures_png = charts.figures_to_png([time_fig, scatter_fig])
+            figures_export_available = True
+        except charts.ChartExportError as exc:
+            figures_png = ()
+            figures_export_available = False
+            st.warning(
+                "チャート画像の書き出しに必要な依存関係が利用できないため、PPTXへの図の"
+                "埋め込みをスキップします。\n"
+                f"詳細: {exc}"
+            )
         highlights = {
             "市場規模": f"{kpis['latest_year']}年 {kpis['latest_value']:,.0f} 万円",
             "前年比": context["前年比"],
@@ -248,7 +258,8 @@ def main() -> None:
         }
         title = f"{industry}_{prefecture}市場分析"
         pdf_bytes = exporters.to_pdf(sections["summary1pager"], [chart_df], title=title)
-        pptx_bytes = exporters.to_pptx(figures_png, highlights, title=title)
+        if figures_export_available:
+            pptx_bytes = exporters.to_pptx(figures_png, highlights, title=title)
         excel_bytes = exporters.to_excel({"raw": data.reset_index(drop=True), "annual": chart_df})
 
         st.download_button(
@@ -257,12 +268,15 @@ def main() -> None:
             file_name=exporters.filename(f"{industry}_{prefecture}", "pdf"),
             mime="application/pdf",
         )
-        st.download_button(
-            label="PPTXダウンロード",
-            data=pptx_bytes,
-            file_name=exporters.filename(f"{industry}_{prefecture}", "pptx"),
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        )
+        if figures_export_available:
+            st.download_button(
+                label="PPTXダウンロード",
+                data=pptx_bytes,
+                file_name=exporters.filename(f"{industry}_{prefecture}", "pptx"),
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            )
+        else:
+            st.info("環境依存関係の不足により、チャート付きのPPTX出力は現在ご利用いただけません。")
         st.download_button(
             label="Excelダウンロード",
             data=excel_bytes,
