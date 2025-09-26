@@ -10,7 +10,9 @@ import streamlit as st
 FOOTER_TEXT = "統計出典：政府統計の総合窓口（e-Stat）。二次利用ポリシー遵守。 / 年次統計の最新値推定（Nowcast）は月次指標による近似。参考値であり将来を保証しません。"
 
 
-def sidebar_controls(presets: Dict[str, Dict[str, str]]) -> Tuple[str, str, str, Dict[str, str], Tuple[int, int], bool]:
+def sidebar_controls(
+    presets: Dict[str, Dict[str, str]]
+) -> Tuple[str, str, str, Dict[str, str], Tuple[int, int], bool, str]:
     """Render sidebar controls and return user selections."""
 
     st.sidebar.header("分析条件")
@@ -76,13 +78,28 @@ def sidebar_controls(presets: Dict[str, Dict[str, str]]) -> Tuple[str, str, str,
     )
     period = st.sidebar.slider("期間（年）", 2009, 2023, (2012, 2021))
     nowcast = st.sidebar.toggle("Nowcast推定を表示", value=True)
+
+    default_api_key = ""
+    if "estat_api_key" in st.session_state:
+        default_api_key = st.session_state["estat_api_key"]
+    elif "ESTAT_APP_ID" in st.secrets:
+        default_api_key = st.secrets["ESTAT_APP_ID"]
+
+    api_key = st.sidebar.text_input(
+        "e-Stat APIキー",
+        value=default_api_key,
+        type="password",
+        help="e-StatのアプリケーションIDを入力してください。",
+    )
+    if api_key:
+        st.session_state["estat_api_key"] = api_key
     advanced = st.sidebar.expander("高度な設定")
     with advanced:
         st.caption("sample_queries.json を編集することで統計表を追加できます。")
         st.json(presets[preset_key])
     st.sidebar.markdown("---")
     st.sidebar.caption(FOOTER_TEXT)
-    return industry, prefecture, preset_key, presets[preset_key], period, nowcast
+    return industry, prefecture, preset_key, presets[preset_key], period, nowcast, api_key
 
 
 def footer() -> None:

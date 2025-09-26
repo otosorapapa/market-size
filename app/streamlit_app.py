@@ -23,10 +23,13 @@ def load_presets() -> Dict[str, Dict[str, str]]:
         return json.load(file)
 
 
-def _load_estat_client() -> EstatClient:
-    if "ESTAT_APP_ID" not in st.secrets:
-        raise RuntimeError("ESTAT_APP_ID が secrets.toml に設定されていません。")
-    return EstatClient(st.secrets["ESTAT_APP_ID"])
+def _load_estat_client(api_key: str | None) -> EstatClient:
+    app_id = (api_key or "").strip()
+    if not app_id and "ESTAT_APP_ID" in st.secrets:
+        app_id = st.secrets["ESTAT_APP_ID"].strip()
+    if not app_id:
+        raise RuntimeError("e-StatのAPIキーが未設定です。サイドバーから入力してください。")
+    return EstatClient(app_id)
 
 
 def _prepare_parameters(meta: Dict[str, str], period: Tuple[int, int], prefecture_code: str) -> Dict[str, str]:
@@ -118,7 +121,15 @@ def main() -> None:
     st.caption("業種と地域を選ぶだけで、e-Stat統計と生成AIを組み合わせたレポートを自動生成します。")
 
     presets = load_presets()
-    industry, prefecture, preset_key, preset_meta, period, use_nowcast = layout.sidebar_controls(presets)
+    (
+        industry,
+        prefecture,
+        preset_key,
+        preset_meta,
+        period,
+        use_nowcast,
+        estat_api_key,
+    ) = layout.sidebar_controls(presets)
 
     suggestions = jsic_mapper.guess_jsic(industry)
     with st.expander("JSIC候補を見る", expanded=False):
@@ -141,7 +152,7 @@ def main() -> None:
     params = _prepare_parameters(preset_meta, period, prefecture_code)
 
     try:
-        client = _load_estat_client()
+        client = _load_estat_client(estat_api_key)
     except RuntimeError as error:
         st.error(str(error))
         data = _create_placeholder(period)
