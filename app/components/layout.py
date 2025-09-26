@@ -95,8 +95,11 @@ def sidebar_controls(
         type="password",
         help="e-StatのアプリケーションIDを入力してください。",
     )
+    api_key = api_key.strip()
     if api_key:
         st.session_state["estat_api_key"] = api_key
+    elif "estat_api_key" in st.session_state and st.session_state["estat_api_key"]:
+        api_key = st.session_state["estat_api_key"]
     advanced = st.sidebar.expander("高度な設定")
     with advanced:
         st.caption("sample_queries.json を編集することで統計表を追加できます。")
