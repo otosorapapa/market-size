@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from contextlib import suppress
 from typing import Dict, Tuple
 
 import numpy as np
@@ -22,6 +23,38 @@ DATA_DIR = Path(__file__).parent / "data"
 def load_presets() -> Dict[str, Dict[str, str]]:
     with open(DATA_DIR / "sample_queries.json", "r", encoding="utf-8") as file:
         return json.load(file)
+
+
+def _persist_stats_data_id(preset_key: str, stats_data_id: str) -> None:
+    """Persist the resolved ``statsDataId`` back to the presets file."""
+
+    if not stats_data_id:
+        return
+
+    file_path = DATA_DIR / "sample_queries.json"
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            presets_data = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):  # pragma: no cover - defensive
+        return
+
+    preset_entry = presets_data.get(preset_key)
+    if not isinstance(preset_entry, dict):
+        return
+
+    if preset_entry.get("statsDataId") == stats_data_id:
+        return
+
+    preset_entry["statsDataId"] = stats_data_id
+    with open(file_path, "w", encoding="utf-8") as file:
+        json.dump(presets_data, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+
+    with suppress(AttributeError):  # pragma: no cover - cache invalidation best effort
+        load_presets.clear()  # type: ignore[attr-defined]
+
+    if hasattr(st, "toast"):
+        st.toast(f"{preset_entry.get('name', preset_key)} の statsDataId を更新しました。")
 
 
 def _load_estat_client(api_key: str | None) -> EstatClient:
@@ -172,6 +205,7 @@ def main() -> None:
                 table_name_keyword=preset_meta.get("tableNameKeyword"),
             )
             preset_meta["statsDataId"] = resolved_stats_id
+            _persist_stats_data_id(preset_key, resolved_stats_id)
             with st.status("e-Statから統計を取得中", expanded=True):
                 data = client.get(resolved_stats_id, params)
         except Exception as exc:  # pragma: no cover - defensive against API issues
@@ -184,6 +218,7 @@ def main() -> None:
                         refresh=True,
                     )
                     preset_meta["statsDataId"] = resolved_stats_id
+                    _persist_stats_data_id(preset_key, resolved_stats_id)
                     with st.status("e-Statから統計を取得中", expanded=True):
                         data = client.get(resolved_stats_id, params)
                 except Exception as retry_exc:
