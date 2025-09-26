@@ -103,6 +103,8 @@ def sidebar_controls(
     advanced = st.sidebar.expander("高度な設定")
     with advanced:
         st.caption("sample_queries.json を編集することで統計表を追加できます。")
+        stats_id = presets[preset_key].get("statsDataId") or "未設定"
+        st.text_input("statsDataId", value=str(stats_id), disabled=True)
         st.json(presets[preset_key])
     st.sidebar.markdown("---")
     st.sidebar.caption(FOOTER_TEXT)
