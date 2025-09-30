@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 from contextlib import suppress
+from pathlib import Path
 from typing import Dict, Tuple
 
 import numpy as np
@@ -155,21 +155,88 @@ def _calculate_kpis(series: pd.Series) -> Dict[str, float]:
     }
 
 
+def _resolve_initial_api_key() -> str:
+    if "estat_api_key" in st.session_state:
+        return str(st.session_state["estat_api_key"]).strip()
+    if "ESTAT_APP_ID" in st.secrets:
+        return str(st.secrets["ESTAT_APP_ID"]).strip()
+    return os.getenv("ESTAT_APP_ID", "").strip()
+
+
+def _initialize_session_state(presets: Dict[str, Dict[str, str]]) -> None:
+    if "industry" not in st.session_state:
+        st.session_state["industry"] = "美容室"
+    if "prefecture" not in st.session_state:
+        st.session_state["prefecture"] = "佐賀県"
+
+    preset_keys = list(presets.keys())
+    if not preset_keys:  # pragma: no cover - defensive guard
+        raise RuntimeError("プリセットが読み込めませんでした。")
+
+    if "preset_key" not in st.session_state or st.session_state["preset_key"] not in presets:
+        st.session_state["preset_key"] = preset_keys[0]
+
+    if "period" not in st.session_state:
+        st.session_state["period"] = (2012, 2021)
+
+    if "use_nowcast" not in st.session_state:
+        st.session_state["use_nowcast"] = True
+
+    if "estat_api_key" not in st.session_state:
+        st.session_state["estat_api_key"] = _resolve_initial_api_key()
+
+    if "run_analysis" not in st.session_state:
+        st.session_state["run_analysis"] = False
+
+    widget_state_mapping = {
+        "_industry_widget": "industry",
+        "_prefecture_widget": "prefecture",
+        "_preset_widget": "preset_key",
+        "_period_widget": "period",
+        "_nowcast_widget": "use_nowcast",
+        "_estat_api_key_widget": "estat_api_key",
+    }
+    for widget_key, state_key in widget_state_mapping.items():
+        if widget_key not in st.session_state:
+            st.session_state[widget_key] = st.session_state[state_key]
+
+
+def _submit_analysis() -> None:
+    st.session_state["industry"] = st.session_state["_industry_widget"].strip() or "美容室"
+    st.session_state["prefecture"] = st.session_state["_prefecture_widget"]
+    st.session_state["preset_key"] = st.session_state["_preset_widget"]
+    period = st.session_state["_period_widget"]
+    st.session_state["period"] = (int(period[0]), int(period[1]))
+    st.session_state["use_nowcast"] = bool(st.session_state["_nowcast_widget"])
+    api_key = str(st.session_state["_estat_api_key_widget"]).strip()
+    if api_key:
+        st.session_state["estat_api_key"] = api_key
+    st.session_state["_industry_widget"] = st.session_state["industry"]
+    st.session_state["_prefecture_widget"] = st.session_state["prefecture"]
+    st.session_state["_preset_widget"] = st.session_state["preset_key"]
+    st.session_state["_period_widget"] = st.session_state["period"]
+    st.session_state["_nowcast_widget"] = st.session_state["use_nowcast"]
+    st.session_state["_estat_api_key_widget"] = st.session_state.get("estat_api_key", "")
+    st.session_state["run_analysis"] = True
+    st.rerun()
+
+
 def main() -> None:
     st.set_page_config(page_title="自動市場分析ダッシュボード", layout="wide")
     st.title("自動市場分析ダッシュボード")
     st.caption("業種と地域を選ぶだけで、e-Stat統計と生成AIを組み合わせたレポートを自動生成します。")
 
     presets = load_presets()
-    (
-        industry,
-        prefecture,
-        preset_key,
-        preset_meta,
-        period,
-        use_nowcast,
-        estat_api_key,
-    ) = layout.sidebar_controls(presets)
+    _initialize_session_state(presets)
+    layout.sidebar_controls(presets, on_submit=_submit_analysis)
+
+    industry = st.session_state["industry"]
+    prefecture = st.session_state["prefecture"]
+    preset_key = st.session_state["preset_key"]
+    period = st.session_state["period"]
+    use_nowcast = st.session_state["use_nowcast"]
+    estat_api_key = st.session_state.get("estat_api_key", "")
+    preset_meta = presets[preset_key]
 
     suggestions = jsic_mapper.guess_jsic(industry)
     with st.expander("JSIC候補を見る", expanded=False):
@@ -179,12 +246,8 @@ def main() -> None:
         else:
             st.write("候補が見つかりませんでした。")
 
-    if "run_analysis" not in st.session_state:
-        st.session_state["run_analysis"] = False
-    if st.sidebar.button("分析する", type="primary"):
-        st.session_state["run_analysis"] = True
-
     if not st.session_state["run_analysis"]:
+        st.info("サイドバーで条件を設定し、「分析する」をクリックしてください。")
         layout.footer()
         return
 
